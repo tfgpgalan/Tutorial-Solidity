@@ -12,7 +12,11 @@ contract Produccion is IERC20 {
     mapping(address => uint256) private _balance;
     mapping(address => mapping(address => uint256)) private _allowance;
     //Balance de cada address por día de la semana y dentro de este por cada hora del día
-    mapping(address => mapping(uint => mapping (uint => uint256))) private _balanceHoraDayofWeek;
+    struct ProducccionDia {
+       uint timestamp;
+       mapping (uint => uint256) produccionXhora;
+    }
+    mapping(address => mapping(uint => ProducccionDia )) private _balanceHoraDayofWeek;
     uint8 public decimals;
     string public name;
     uint256 private constant MAX_UINT256 = 2**256 - 1;
@@ -57,9 +61,10 @@ contract Produccion is IERC20 {
             _balance[msg.sender] += _value;
             uint dayofWeek=block.timestamp.getDayOfWeek();
             uint horadeldia=block.timestamp.getHour();
-            if (horadeldia==0) iniciaDia(dayofWeek,msg.sender);
+            if (horadeldia==0) iniciaDia(dayofWeek,msg.sender,block.timestamp);
             emit GrabaHora(msg.sender, dayofWeek-1, horadeldia,_value);
-            _balanceHoraDayofWeek[msg.sender][dayofWeek-1][horadeldia]+=_value;
+            ProducccionDia storage prodDia=_balanceHoraDayofWeek[msg.sender][dayofWeek-1];
+            prodDia.produccionXhora[horadeldia]+=_value;
             totalSupply+=_value;
 
         } else {
@@ -74,37 +79,44 @@ contract Produccion is IERC20 {
 
     function inicia_balance_productor_nuevo(address _address) internal{
         for (uint dia=1; dia<=7;dia++){
-           iniciaDia(dia,_address);
+           iniciaDia(dia,_address,0);
         }
     }
 //Función para generar valores demo, quitar en producción
     function acumula_dia(address _address,uint _dayOfWeek,uint[] memory _produccion_hora) public {
-        require(_dayOfWeek>=1 && _dayOfWeek<=7 && _produccion_hora.length==24,"Día o matriz de horas(24) error");
+        require(_dayOfWeek>=1 && _dayOfWeek<=7 && _produccion_hora.length==24,unicode"Día o matriz de horas(24) error");
         if (!_productores.isInList(_address)){
             _productores.addElemento(_address);
             inicia_balance_productor_nuevo(_address);
         }
         _productores.addElemento(_address);
+        ProducccionDia storage prodDia=_balanceHoraDayofWeek[_address][_dayOfWeek-1];
+        prodDia.timestamp=block.timestamp.addDays(_dayOfWeek-1);
         for(uint i = 0; i<24; i++) { 
-            _balanceHoraDayofWeek[_address][_dayOfWeek-1][i]+=_produccion_hora[i];
+            prodDia.produccionXhora[i]+=_produccion_hora[i];
+            _balance[_address] += _produccion_hora[i];
+
         }
 
     }
 
-    function iniciaDia(uint _dia,address _address) internal{
+    function iniciaDia(uint _dia,address _address, uint _timestamp) internal{
+        ProducccionDia storage prodDia=_balanceHoraDayofWeek[_address][_dia-1];
+        prodDia.timestamp=_timestamp;
         for(uint i = 0; i<24; i++) { 
-        _balanceHoraDayofWeek[_address][_dia-1][i]=0;
+            prodDia.produccionXhora[i]=0;
         }
     }
 
-    function getBalanceOfDaysOfWeek(address _productor) public view returns(uint256[24][7] memory elementos) {
-        uint256[24][7] memory elementosArray ;
+    function getBalanceOfDaysOfWeek(address _productor) public view returns(uint256[24][7] memory produccion, uint[7] memory dias) {
+        
         for (uint dia=0; dia<=6;dia++){
+            ProducccionDia storage prodDia=_balanceHoraDayofWeek[_productor][dia];
+            dias[dia]=prodDia.timestamp;
             for (uint hora=0; hora <=23; hora++){
-                elementosArray[dia][hora]= _balanceHoraDayofWeek[_productor][dia][hora];
+                produccion[dia][hora]= prodDia.produccionXhora[hora];
             }
         }
-        return elementosArray;
     }
 
  
