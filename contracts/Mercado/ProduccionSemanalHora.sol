@@ -44,11 +44,7 @@ contract Produccion is IERC20 {
     }
 
 
-    function mes() public view returns (uint _mes){
-        uint ahora=block.timestamp;
-        
-        return ahora.getMonth();
-    }
+
 //0x0000000000000000000000000000000000000000
     //Si _to es 0x0 se supone que es producción de watios
     function transfer(address _to, uint256 _value) public override returns (bool success)
@@ -89,9 +85,9 @@ contract Produccion is IERC20 {
             _productores.addElemento(_address);
             inicia_balance_productor_nuevo(_address);
         }
-        _productores.addElemento(_address);
+        iniciaDia(_dayOfWeek,_address,block.timestamp.subDays(_dayOfWeek-1));
         ProducccionDia storage prodDia=_balanceHoraDayofWeek[_address][_dayOfWeek-1];
-        prodDia.timestamp=block.timestamp.addDays(_dayOfWeek-1);
+        //prodDia.timestamp=block.timestamp.subDays(_dayOfWeek-1);
         for(uint i = 0; i<24; i++) { 
             prodDia.produccionXhora[i]+=_produccion_hora[i];
             _balance[_address] += _produccion_hora[i];
@@ -108,6 +104,7 @@ contract Produccion is IERC20 {
         }
     }
 
+    
     function getBalanceOfDaysOfWeek(address _productor) public view returns(uint256[24][7] memory produccion, uint[7] memory dias) {
         
         for (uint dia=0; dia<=6;dia++){
@@ -119,7 +116,7 @@ contract Produccion is IERC20 {
         }
     }
 
- 
+
     
     
     function transferFrom(address _from, address _to,uint256 _value) public override returns (bool success) {
@@ -155,6 +152,11 @@ contract Produccion is IERC20 {
     function borraProductor(address _addressDel) public{
         require(msg.sender==owner,'Solo el owner puede borrar productores.');
         _productores.removeElemento(_addressDel);
+    }
+
+    function reseteaProductores() public {
+        require(owner == msg.sender,"Solo puede resetear el owner del contrato");
+        _productores.removeAllElementos();
     }
 
     function getAllProductores() public view returns(address[] memory){

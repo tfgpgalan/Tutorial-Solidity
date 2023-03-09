@@ -10,6 +10,7 @@ library MapIterableLib {
     address constant internal FIRST_ADDRESS= address(1);
     function inicia(MapIterable storage _self) internal{ 
         _self._mapping[FIRST_ADDRESS] = FIRST_ADDRESS;
+        _self.contadorElementos=0;
     }
     function isInList(MapIterable storage _self, address _address) internal view returns(bool) {
         return _self._mapping[_address] != address(0);
@@ -43,7 +44,7 @@ library MapIterableLib {
         return FIRST_ADDRESS;
     }
 
-    function removeElemento(MapIterable storage _self,address _address) public {
+    function removeElemento(MapIterable storage _self,address _address) internal {
         require(_address!=FIRST_ADDRESS,'Address reservada');
         require(isInList(_self,_address), 'El usuario no existe');
         address prevElemento = getPrevElemento(_self,_address);
@@ -51,4 +52,18 @@ library MapIterableLib {
         _self._mapping[_address] = address(0);
         _self.contadorElementos--;
     }
+
+    function removeAllElementos(MapIterable storage _self) internal {
+        address currentAddress =_self._mapping[FIRST_ADDRESS];
+        address auxAddress;
+        while(currentAddress != FIRST_ADDRESS) {
+            auxAddress=_self._mapping[currentAddress];
+            _self._mapping[currentAddress]=address(0);
+            currentAddress=auxAddress;
+        }
+        inicia(_self);
+    }
+
+
+
     }
